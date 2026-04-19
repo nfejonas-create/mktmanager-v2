@@ -23,6 +23,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Só executa no cliente
+    if (typeof window === 'undefined') {
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
@@ -33,8 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Erro ao restaurar sessao:', error);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // Limpa dados corrompidos
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      } catch (e) {
+        // Ignora erro de localStorage
+      }
     }
 
     setIsLoading(false);
@@ -42,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, _password: string) => {
     // Mock login para desenvolvimento
-    // Em produção, fazer chamada real à API
     const mockUser: User = {
       id: '1',
       name: 'Jonas Breitenbach',
@@ -52,16 +62,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const mockToken = 'mock_token_' + Date.now();
     
-    localStorage.setItem('token', mockToken);
-    localStorage.setItem('user', JSON.stringify(mockUser));
+    // Só acessa localStorage no cliente
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('token', mockToken);
+        localStorage.setItem('user', JSON.stringify(mockUser));
+      } catch (e) {
+        console.error('Erro ao salvar no localStorage:', e);
+      }
+    }
     
     setToken(mockToken);
     setUser(mockUser);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      } catch (e) {
+        console.error('Erro ao limpar localStorage:', e);
+      }
+    }
     setToken(null);
     setUser(null);
   };
