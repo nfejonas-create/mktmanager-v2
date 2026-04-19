@@ -3,7 +3,7 @@ services:
     name: postflow-backend
     runtime: node
     plan: free
-    buildCommand: npm install && npx prisma generate && npx prisma migrate deploy && npm run build
+    buildCommand: npm install --include=dev && npx prisma generate && npx prisma migrate deploy && npm run build
     startCommand: node dist/api/server.js
     envVars:
       - key: NODE_ENV
