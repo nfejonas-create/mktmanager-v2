@@ -4,7 +4,7 @@ const rawApiUrl =
   // @ts-ignore
   import.meta.env?.VITE_API_URL ||
   // @ts-ignore
-  (import.meta.env?.PROD ? 'https://postflow-backend.onrender.com/api' : '/api');
+  (import.meta.env?.PROD ? 'https://postflow-backend-cspj.onrender.com/api' : '/api');
 
 const API_URL = rawApiUrl.replace(/\/+$/, '');
 

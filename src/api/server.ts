@@ -11,11 +11,31 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const frontendUrl = process.env.FRONTEND_URL;
+
+function isAllowedOrigin(origin?: string) {
+  if (!origin) return true;
+  if (frontendUrl && origin === frontendUrl) return true;
+
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.vercel.app');
+  } catch {
+    return false;
+  }
+}
 
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 app.use(express.json());
