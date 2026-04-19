@@ -2,9 +2,8 @@ services:
   - type: web
     name: postflow-backend
     runtime: node
-    region: oregon
     plan: free
-    buildCommand: npm install --include=dev && npx prisma generate && npx prisma migrate deploy && npm run build
+    buildCommand: npm install && npx prisma generate && npx prisma migrate deploy && npm run build
     startCommand: node dist/api/server.js
     envVars:
       - key: NODE_ENV
@@ -22,18 +21,6 @@ services:
           property: connectionString
       - key: ENCRYPTION_KEY
         generateValue: true
-      - key: LINKEDIN_CLIENT_ID
-        sync: false
-      - key: LINKEDIN_CLIENT_SECRET
-        sync: false
-      - key: LINKEDIN_REDIRECT_URI
-        value: https://postflow-backend.onrender.com/api/accounts/linkedin/callback
-      - key: FACEBOOK_APP_ID
-        sync: false
-      - key: FACEBOOK_APP_SECRET
-        sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
       - key: FRONTEND_URL
         value: https://web-14qxg8bcg-jonas-breitenbachs-projects.vercel.app
     healthCheckPath: /health
@@ -47,4 +34,3 @@ databases:
 redis:
   - name: postflow-redis
     plan: free
-    ipAllowList: []
