@@ -130,7 +130,7 @@ export default function Dashboard() {
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-lg font-medium text-gray-900">Posts Recentes</h2>
           <Link
-            to="/create"
+            to="/conteudo"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             <Plus className="w-4 h-4 mr-2" />

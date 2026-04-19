@@ -32,19 +32,29 @@ export default function Contas() {
 
   const handleConnectLinkedIn = async () => {
     try {
-      await api.post('/accounts/linkedin/auth');
-      alert('Em produção, isso redirecionaria para o OAuth do LinkedIn');
+      const response = await api.post('/accounts/linkedin/auth');
+      if (response.data?.authUrl) {
+        window.location.href = response.data.authUrl;
+      } else {
+        throw new Error('LinkedIn auth URL not returned');
+      }
     } catch (error) {
       console.error('Error initiating LinkedIn auth:', error);
+      alert('Erro ao iniciar conexao com LinkedIn.');
     }
   };
 
   const handleConnectFacebook = async () => {
     try {
-      await api.post('/accounts/facebook/auth');
-      alert('Em produção, isso redirecionaria para o OAuth do Facebook');
+      const response = await api.post('/accounts/facebook/auth');
+      if (response.data?.authUrl) {
+        window.location.href = response.data.authUrl;
+      } else {
+        throw new Error('Facebook auth URL not returned');
+      }
     } catch (error) {
       console.error('Error initiating Facebook auth:', error);
+      alert('Erro ao iniciar conexao com Facebook.');
     }
   };
 

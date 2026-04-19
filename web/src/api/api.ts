@@ -1,10 +1,16 @@
 import axios from 'axios';
 
-// @ts-ignore
-const API_URL = import.meta.env?.VITE_API_URL || '/api';
+const rawApiUrl =
+  // @ts-ignore
+  import.meta.env?.VITE_API_URL ||
+  // @ts-ignore
+  (import.meta.env?.PROD ? 'https://postflow-backend.onrender.com/api' : '/api');
+
+const API_URL = rawApiUrl.replace(/\/+$/, '');
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json'
   }

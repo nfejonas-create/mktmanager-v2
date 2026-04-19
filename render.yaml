@@ -17,7 +17,7 @@ services:
       - key: REDIS_URL
         fromService:
           name: postflow-redis
-          type: redis
+          type: keyvalue
           property: connectionString
       - key: ENCRYPTION_KEY
         generateValue: true
@@ -25,12 +25,13 @@ services:
         value: https://web-14qxg8bcg-jonas-breitenbachs-projects.vercel.app
     healthCheckPath: /health
 
+  - type: keyvalue
+    name: postflow-redis
+    plan: free
+    ipAllowList: []
+
 databases:
   - name: postflow-db
     databaseName: postflow
     user: postflow
-    plan: free
-
-redis:
-  - name: postflow-redis
     plan: free

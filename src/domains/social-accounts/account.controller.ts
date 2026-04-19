@@ -6,6 +6,29 @@ import { OAuthService } from './oauth.service';
 const router = Router();
 const accountService = new AccountService();
 
+function sendOAuthResult(
+  res: Response,
+  provider: 'linkedin' | 'facebook',
+  success: boolean,
+  payload?: unknown,
+  message?: string
+) {
+  const frontendUrl = process.env.FRONTEND_URL;
+  if (frontendUrl) {
+    const redirectUrl = new URL('/contas', frontendUrl);
+    redirectUrl.searchParams.set('provider', provider);
+    redirectUrl.searchParams.set('status', success ? 'success' : 'error');
+    if (message) {
+      redirectUrl.searchParams.set('message', message);
+    }
+    return res.redirect(redirectUrl.toString());
+  }
+
+  return success
+    ? res.json({ success: true, account: payload })
+    : res.status(500).json({ error: message || 'OAuth failed' });
+}
+
 // Get all accounts for user
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -90,10 +113,10 @@ router.get('/linkedin/callback', async (req: Request, res: Response) => {
       expiresAt: new Date(Date.now() + tokenData.expiresIn * 1000)
     });
     
-    res.json({ success: true, account });
+    return sendOAuthResult(res, 'linkedin', true, account);
   } catch (error) {
     console.error('LinkedIn OAuth error:', error);
-    res.status(500).json({ error: 'OAuth failed' });
+    return sendOAuthResult(res, 'linkedin', false, undefined, 'OAuth failed');
   }
 });
 
@@ -140,10 +163,10 @@ router.get('/facebook/callback', async (req: Request, res: Response) => {
       externalId: page.id
     });
     
-    res.json({ success: true, account });
+    return sendOAuthResult(res, 'facebook', true, account);
   } catch (error) {
     console.error('Facebook OAuth error:', error);
-    res.status(500).json({ error: 'OAuth failed' });
+    return sendOAuthResult(res, 'facebook', false, undefined, 'OAuth failed');
   }
 });
 
