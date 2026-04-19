@@ -19,10 +19,10 @@ import Contas from './pages/Contas';
 import PostDetails from './pages/PostDetails';
 
 // Error Boundary
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null, errorInfo: ErrorInfo | null }> {
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { error: null };
+    this.state = { error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error: Error) {
@@ -31,21 +31,36 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('[ErrorBoundary]', error, info);
+    this.setState({ errorInfo: info });
   }
 
   render() {
     if (this.state.error) {
       return (
         <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white gap-4 p-8">
-          <h1 className="text-2xl font-bold text-red-400">Algo deu errado</h1>
-          <pre className="text-xs text-slate-400 bg-slate-900 p-4 rounded-lg max-w-xl overflow-auto whitespace-pre-wrap">
-            {this.state.error.message}
-          </pre>
+          <h1 className="text-2xl font-bold text-red-400">Erro na aplicação</h1>
+          <div className="text-left w-full max-w-2xl">
+            <p className="text-sm text-slate-400 mb-2">Erro:</p>
+            <pre className="text-xs text-red-300 bg-slate-900 p-4 rounded-lg overflow-auto whitespace-pre-wrap mb-4">
+              {this.state.error.message}
+            </pre>
+            {this.state.errorInfo && (
+              <>
+                <p className="text-sm text-slate-400 mb-2">Stack:</p>
+                <pre className="text-xs text-slate-500 bg-slate-900 p-4 rounded-lg overflow-auto whitespace-pre-wrap">
+                  {this.state.errorInfo.componentStack}
+                </pre>
+              </>
+            )}
+          </div>
           <button 
-            onClick={() => this.setState({ error: null })}
+            onClick={() => {
+              this.setState({ error: null, errorInfo: null });
+              window.location.reload();
+            }}
             className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-sm transition-colors"
           >
-            Tentar novamente
+            Recarregar página
           </button>
         </div>
       );
