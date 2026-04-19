@@ -1,0 +1,18 @@
+# Secrets
+*.env
+.env.local
+.env.production
+set-env.ps1
+set-env.sh
+
+# Node
+node_modules/
+dist/
+*.log
+
+# Uploads
+uploads/
+
+# IDE
+.vscode/
+.idea/

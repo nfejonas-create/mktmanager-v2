@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Platform {
+  LINKEDIN
+  FACEBOOK
+}
+
+enum ContentType {
+  TEXT
+  IMAGE
+  TEXT_IMAGE
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+model SocialAccount {
+  id           String    @id @default(cuid())
+  userId       String    @default("default")
+  platform     Platform
+  accountName  String
+  accountType  String
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  externalId   String
+  isDefault    Boolean   @default(false)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  posts   Post[]
+  metrics AccountMetric[]
+
+  @@unique([userId, platform, accountName])
+  @@index([userId, platform])
+}
+
+model Post {
+  id              String        @id @default(cuid())
+  userId          String        @default("default")
+  socialAccountId String
+  socialAccount   SocialAccount @relation(fields: [socialAccountId], references: [id])
+
+  content     String
+  contentType ContentType
+  mediaUrls   String[]
+
+  status      PostStatus
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  externalId  String?
+  externalUrl String?
+
+  likes    Int @default(0)
+  comments Int @default(0)
+  shares   Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([socialAccountId, status])
+  @@index([scheduledAt, status])
+}
+
+model AccountMetric {
+  id              String        @id @default(cuid())
+  socialAccountId String
+  socialAccount   SocialAccount @relation(fields: [socialAccountId], references: [id])
+
+  date        DateTime
+  followers   Int   @default(0)
+  impressions Int   @default(0)
+  engagement  Float @default(0)
+
+  @@unique([socialAccountId, date])
+}
