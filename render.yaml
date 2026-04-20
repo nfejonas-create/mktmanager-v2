@@ -4,6 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install --include=dev && npx prisma generate && npx prisma migrate deploy && npm run build
+    postDeployCommand: npm run migrate:encryption
     startCommand: node dist/api/server.js
     envVars:
       - key: NODE_ENV
@@ -20,6 +21,8 @@ services:
           type: keyvalue
           property: connectionString
       - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
         value: https://web-14qxg8bcg-jonas-breitenbachs-projects.vercel.app
