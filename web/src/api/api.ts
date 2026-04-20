@@ -16,13 +16,23 @@ const api = axios.create({
   }
 });
 
+function getCurrentUserId() {
+  if (typeof window === 'undefined') return 'jonas';
+  return localStorage.getItem('currentUserId') || 'jonas';
+}
+
 // Add request interceptor for auth if needed
 api.interceptors.request.use((config) => {
-  // Add userId to all requests for now (single user mode)
+  const currentUserId = getCurrentUserId();
+
   if (config.params) {
-    config.params.userId = config.params.userId || 'default';
+    config.params.userId = config.params.userId || currentUserId;
   } else {
-    config.params = { userId: 'default' };
+    config.params = { userId: currentUserId };
+  }
+
+  if (config.data && typeof config.data === 'object' && !Array.isArray(config.data)) {
+    config.data.userId = config.data.userId || currentUserId;
   }
   return config;
 });

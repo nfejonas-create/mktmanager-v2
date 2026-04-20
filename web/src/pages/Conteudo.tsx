@@ -4,6 +4,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock3,
+  Copy,
   FileText,
   History,
   Image as ImageIcon,
@@ -35,6 +36,10 @@ interface SavedPost {
     platform: 'LINKEDIN' | 'FACEBOOK';
     accountName: string;
   };
+}
+
+function ensureArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? value : [];
 }
 
 const tabs: Array<{ key: TabKey; label: string; icon: typeof Wand2 }> = [
@@ -93,6 +98,9 @@ export default function Conteudo() {
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState('Tecnico');
   const [content, setContent] = useState('');
+  const [visualStyle, setVisualStyle] = useState<'single' | 'carousel'>('single');
+  const [imageStyle, setImageStyle] = useState('Profissional');
+  const [imagePrompt, setImagePrompt] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [publishNow, setPublishNow] = useState(false);
 
@@ -109,7 +117,7 @@ export default function Conteudo() {
   async function fetchAccounts() {
     try {
       const response = await api.get('/accounts');
-      const fetchedAccounts = response.data as SocialAccount[];
+      const fetchedAccounts = ensureArray<SocialAccount>(response.data);
       setAccounts(fetchedAccounts);
 
       const defaultAccount = fetchedAccounts.find((account) => account.isDefault) || fetchedAccounts[0];
@@ -125,7 +133,7 @@ export default function Conteudo() {
     setLoadingHistory(true);
     try {
       const response = await api.get('/posts', { params: { limit: 12 } });
-      setPosts(response.data);
+      setPosts(ensureArray<SavedPost>(response.data));
     } catch (error) {
       console.error('Error fetching posts:', error);
     } finally {
@@ -147,6 +155,7 @@ export default function Conteudo() {
       const nextContent = response.data.content || '';
       const hashtags = response.data.hashtags?.length ? `\n\n${response.data.hashtags.join(' ')}` : '';
       setContent(`${nextContent}${hashtags}`.trim());
+      setImagePrompt(buildImagePrompt(`${nextContent}${hashtags}`.trim(), visualStyle, imageStyle));
     } catch (error) {
       console.error('Error generating content:', error);
       alert('Erro ao gerar conteúdo. Tente novamente.');
@@ -195,6 +204,26 @@ export default function Conteudo() {
     } finally {
       setPublishingId(null);
     }
+  }
+
+  function buildImagePrompt(baseContent: string, mode: 'single' | 'carousel', style: string) {
+    const normalized = baseContent.replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+
+    if (mode === 'carousel') {
+      return `Crie um carrossel para LinkedIn/Facebook no estilo ${style}. Slide 1 com gancho forte, slides 2 a 5 com desenvolvimento em tópicos claros, último slide com CTA. Base do conteúdo: ${normalized}`;
+    }
+
+    return `Crie uma imagem social no estilo ${style}, com visual profissional e editorial, baseada neste conteúdo: ${normalized}`;
+  }
+
+  function refreshImagePrompt() {
+    setImagePrompt(buildImagePrompt(content, visualStyle, imageStyle));
+  }
+
+  async function copyImagePrompt() {
+    if (!imagePrompt) return;
+    await navigator.clipboard.writeText(imagePrompt);
   }
 
   return (
@@ -335,6 +364,88 @@ export default function Conteudo() {
                 placeholder="O texto gerado ou escrito manualmente aparece aqui."
                 className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-white placeholder-slate-500 resize-none focus:outline-none focus:border-blue-500"
               />
+            </div>
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm text-slate-300 font-medium flex items-center gap-2">
+                    <ImageIcon size={16} className="text-purple-400" />
+                    Gerador de imagem e carrossel
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">Usa o conteúdo gerado para montar o prompt visual.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={refreshImagePrompt}
+                  disabled={!content.trim()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50"
+                >
+                  <ImageIcon size={16} />
+                  Gerar prompt visual
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">Formato visual</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: 'single', label: 'Imagem única' },
+                      { value: 'carousel', label: 'Carrossel' }
+                    ].map((item) => (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => setVisualStyle(item.value as 'single' | 'carousel')}
+                        className={`rounded-xl border px-3 py-3 text-sm transition-colors ${
+                          visualStyle === item.value
+                            ? 'border-purple-500 bg-purple-600/15 text-purple-300'
+                            : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">Estilo</label>
+                  <select
+                    value={imageStyle}
+                    onChange={(e) => setImageStyle(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="Profissional">Profissional</option>
+                    <option value="Minimalista">Minimalista</option>
+                    <option value="Impacto">Impacto</option>
+                    <option value="Editorial">Editorial</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Prompt gerado</label>
+                <textarea
+                  value={imagePrompt}
+                  onChange={(e) => setImagePrompt(e.target.value)}
+                  rows={4}
+                  placeholder="O prompt da imagem ou do carrossel aparece aqui."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-white placeholder-slate-500 resize-none focus:outline-none focus:border-purple-500"
+                />
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void copyImagePrompt()}
+                    disabled={!imagePrompt}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    <Copy size={15} />
+                    Copiar prompt
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-end">

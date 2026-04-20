@@ -12,7 +12,6 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Conteudo from './pages/Conteudo';
 import BaseConhecimento from './pages/BaseConhecimento';
-import Funil from './pages/Funil';
 import Calendario from './pages/Calendario';
 import Configuracoes from './pages/Configuracoes';
 import Contas from './pages/Contas';
@@ -102,7 +101,6 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="conteudo" element={<Conteudo />} />
               <Route path="base-conhecimento" element={<BaseConhecimento />} />
-              <Route path="funil" element={<Funil />} />
               <Route path="calendario" element={<Calendario />} />
               <Route path="contas" element={<Contas />} />
               <Route path="configuracoes" element={<Configuracoes />} />
