@@ -1,161 +1,89 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Eye, Heart, Linkedin, RefreshCw, Users, Globe2, Link2, Facebook } from 'lucide-react';
+import { Activity, BarChart3, RefreshCw, TrendingUp, Users } from 'lucide-react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import api from '../services/api';
 import MetricCard from '../components/MetricCard';
 
-type ProfileLinks = {
-  linkedin: string;
-  facebook: string;
-  site: string;
-  other: string;
-};
+type Platform = 'LINKEDIN' | 'FACEBOOK';
 
-type AnalyticsSummary = {
-  posts30d: number;
-  views30d: number;
-  likes30d: number;
-  followersTotal: number;
-};
-
-type AnalyticsPoint = {
-  date: string;
-  views: number;
-  likes: number;
-  posts: number;
-};
-
-type MeResponse = {
+interface SocialAccount {
   id: string;
-  name: string;
-  email: string;
-  profiles?: Partial<ProfileLinks> | null;
-};
-
-const PROFILE_STORAGE_KEY = 'dashboard.profileLinks';
-
-const emptyLinks: ProfileLinks = {
-  linkedin: '',
-  facebook: '',
-  site: '',
-  other: ''
-};
-
-const summaryFallback: AnalyticsSummary = {
-  posts30d: 12,
-  views30d: 1840,
-  likes30d: 326,
-  followersTotal: 942
-};
-
-const chartFallback: AnalyticsPoint[] = Array.from({ length: 14 }, (_, index) => ({
-  date: `${String(index + 1).padStart(2, '0')}/04`,
-  views: 90 + index * 14,
-  likes: 18 + index * 3,
-  posts: index % 3 === 0 ? 2 : 1
-}));
-
-function readLocalLinks(): ProfileLinks {
-  if (typeof window === 'undefined') return emptyLinks;
-
-  try {
-    const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
-    if (!raw) return emptyLinks;
-    return { ...emptyLinks, ...(JSON.parse(raw) as Partial<ProfileLinks>) };
-  } catch {
-    return emptyLinks;
-  }
+  platform: Platform;
+  accountName: string;
+  externalId: string;
+  isActive?: boolean;
 }
 
-function saveLocalLinks(links: ProfileLinks) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(links));
+interface MetricsPoint {
+  date: string;
+  impressions: number;
+  engagement: number;
 }
 
-function ensureChartData(value: unknown): AnalyticsPoint[] {
-  return Array.isArray(value) ? (value as AnalyticsPoint[]) : chartFallback;
-}
-
-function ensureSummary(value: unknown): AnalyticsSummary {
-  if (!value || typeof value !== 'object') return summaryFallback;
-  const data = value as Partial<AnalyticsSummary>;
-  return {
-    posts30d: Number(data.posts30d ?? summaryFallback.posts30d),
-    views30d: Number(data.views30d ?? summaryFallback.views30d),
-    likes30d: Number(data.likes30d ?? summaryFallback.likes30d),
-    followersTotal: Number(data.followersTotal ?? summaryFallback.followersTotal)
+interface MetricsResponse {
+  current: {
+    followers: number;
+    impressions: number;
+    engagement: number;
+    reach: number;
   };
+  chart14d: MetricsPoint[];
 }
 
-function ProfileCard({
-  label,
-  colorClass,
-  icon,
-  value,
-  onChange
-}: {
-  label: string;
-  colorClass: string;
-  icon: React.ReactNode;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-      <div className="flex items-center gap-3">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${colorClass}`}>{icon}</div>
-        <h2 className="text-base font-semibold text-white">{label}</h2>
-      </div>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={`https://${label.toLowerCase()}.com/seu-perfil`}
-        className="mt-4 w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500"
-      />
-    </div>
-  );
+const EMPTY_METRICS: MetricsResponse = {
+  current: {
+    followers: 0,
+    impressions: 0,
+    engagement: 0,
+    reach: 0
+  },
+  chart14d: []
+};
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('pt-BR').format(value || 0);
+}
+
+function calculateDelta(points: MetricsPoint[], key: 'impressions' | 'engagement') {
+  if (points.length < 2) {
+    return undefined;
+  }
+
+  const first = points[0][key];
+  const last = points[points.length - 1][key];
+
+  if (first === 0) {
+    return last === 0 ? '0%' : '+100%';
+  }
+
+  const delta = ((last - first) / Math.abs(first)) * 100;
+  const signal = delta > 0 ? '+' : '';
+  return `${signal}${delta.toFixed(1)}%`;
 }
 
 export default function Dashboard() {
-  const [links, setLinks] = useState<ProfileLinks>(emptyLinks);
-  const [summary, setSummary] = useState<AnalyticsSummary>(summaryFallback);
-  const [series, setSeries] = useState<AnalyticsPoint[]>(chartFallback);
+  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [metrics, setMetrics] = useState<MetricsResponse>(EMPTY_METRICS);
   const [loading, setLoading] = useState(true);
-  const [savingLinks, setSavingLinks] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     void loadDashboard();
   }, []);
 
-  const cards = useMemo(
-    () => [
-      {
-        key: 'linkedin' as const,
-        label: 'LinkedIn',
-        colorClass: 'bg-blue-600/20 text-blue-300',
-        icon: <Linkedin size={18} />
-      },
-      {
-        key: 'facebook' as const,
-        label: 'Facebook',
-        colorClass: 'bg-sky-900/50 text-sky-300',
-        icon: <Facebook size={18} />
-      },
-      {
-        key: 'site' as const,
-        label: 'Site',
-        colorClass: 'bg-slate-800 text-slate-200',
-        icon: <Globe2 size={18} />
-      },
-      {
-        key: 'other' as const,
-        label: 'Outra',
-        colorClass: 'bg-slate-800 text-slate-200',
-        icon: <Link2 size={18} />
-      }
-    ],
-    []
+  const linkedInAccount = useMemo(
+    () => accounts.find((account) => account.platform === 'LINKEDIN' && account.isActive !== false) || null,
+    [accounts]
+  );
+
+  const chartData = useMemo(
+    () =>
+      metrics.chart14d.map((item) => ({
+        ...item,
+        shortDate: new Date(item.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+      })),
+    [metrics.chart14d]
   );
 
   async function loadDashboard() {
@@ -163,59 +91,72 @@ export default function Dashboard() {
     setMessage('');
 
     try {
-      const [meResponse, summaryResponse, analyticsResponse] = await Promise.allSettled([
-        api.get<MeResponse>('/auth/me'),
-        api.get('/analytics/summary'),
-        api.get('/analytics', { params: { days: 14 } })
-      ]);
+      const accountsResponse = await api.get('/accounts');
+      const nextAccounts = Array.isArray(accountsResponse.data) ? accountsResponse.data : [];
+      setAccounts(nextAccounts);
 
-      if (meResponse.status === 'fulfilled') {
-        const merged = { ...readLocalLinks(), ...meResponse.value.data.profiles };
-        setLinks(merged);
-        saveLocalLinks(merged);
-      } else {
-        setLinks(readLocalLinks());
+      const account = nextAccounts.find((item: SocialAccount) => item.platform === 'LINKEDIN' && item.isActive !== false);
+      if (!account) {
+        setMetrics(EMPTY_METRICS);
+        return;
       }
 
-      if (summaryResponse.status === 'fulfilled') {
-        setSummary(ensureSummary(summaryResponse.value.data));
-      } else {
-        setSummary(summaryFallback);
-      }
-
-      if (analyticsResponse.status === 'fulfilled') {
-        setSeries(ensureChartData(analyticsResponse.value.data));
-      } else {
-        setSeries(chartFallback);
-      }
+      const metricsResponse = await api.get(`/metrics/linkedin/${account.id}`);
+      setMetrics(metricsResponse.data || EMPTY_METRICS);
+    } catch (error) {
+      console.error('Erro ao carregar dashboard:', error);
+      setMetrics(EMPTY_METRICS);
+      setMessage('Erro ao carregar métricas do LinkedIn.');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleSyncMetrics() {
+  async function syncMetrics() {
+    if (!linkedInAccount) {
+      return;
+    }
+
+    setSyncing(true);
     setMessage('');
 
     try {
-      await api.post('/accounts/sync');
-      setMessage('Sincronização de métricas iniciada.');
-    } catch {
-      setMessage('Sincronização ainda depende do endpoint /api/accounts/sync no backend.');
+      const response = await api.post(`/metrics/linkedin/${linkedInAccount.id}/sync`);
+      setMetrics(response.data || EMPTY_METRICS);
+      setMessage('Métricas sincronizadas com sucesso.');
+    } catch (error) {
+      console.error('Erro ao sincronizar métricas:', error);
+      setMessage('Erro ao sincronizar métricas do LinkedIn.');
+    } finally {
+      setSyncing(false);
     }
   }
 
-  async function handleSaveLinks() {
-    setSavingLinks(true);
-    saveLocalLinks(links);
+  if (loading) {
+    return (
+      <div className="space-y-6 p-8">
+        <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-slate-300">Carregando métricas...</div>
+      </div>
+    );
+  }
 
-    try {
-      await api.put('/auth/me', { profiles: links });
-      setMessage('Links do dashboard salvos com sucesso.');
-    } catch {
-      setMessage('Links salvos localmente. Backend ainda precisa expor PUT /api/auth/me com profiles.');
-    } finally {
-      setSavingLinks(false);
-    }
+  if (!linkedInAccount) {
+    return (
+      <div className="space-y-6 p-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+          <p className="mt-2 text-sm text-slate-400">Métricas reais do LinkedIn com histórico de 14 dias.</p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
+          <h2 className="text-xl font-semibold text-white">Conecte sua conta LinkedIn em Configurações</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+            O dashboard agora usa métricas reais da conta LinkedIn do usuário autenticado. Vá em Configurações, salve o token manualmente e volte aqui para sincronizar seguidores, impressões, engajamento e alcance.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -223,74 +164,59 @@ export default function Dashboard() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-          <p className="mt-2 text-sm text-slate-400">Visão geral do desempenho e dos links principais do perfil.</p>
+          <p className="mt-2 text-sm text-slate-400">Conta ativa: {linkedInAccount.accountName}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => void handleSaveLinks()}
-            disabled={savingLinks}
-            className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
-          >
-            {savingLinks ? 'Salvando...' : 'Salvar links'}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSyncMetrics()}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
-          >
-            <RefreshCw size={16} />
-            Sincronizar Métricas
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => void syncMetrics()}
+          disabled={syncing}
+          className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60"
+        >
+          <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+          {syncing ? 'Sincronizando...' : 'Sincronizar Métricas'}
+        </button>
       </div>
 
       {message ? <div className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-300">{message}</div> : null}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {cards.map((card) => (
-          <ProfileCard
-            key={card.key}
-            label={card.label}
-            colorClass={card.colorClass}
-            icon={card.icon}
-            value={links[card.key]}
-            onChange={(value) => setLinks((current) => ({ ...current, [card.key]: value }))}
-          />
-        ))}
+      <div className="grid gap-4 xl:grid-cols-4">
+        <MetricCard title="Seguidores" value={formatNumber(metrics.current.followers)} icon={<Users size={20} />} />
+        <MetricCard
+          title="Impressões (30d)"
+          value={formatNumber(metrics.current.impressions)}
+          delta={calculateDelta(metrics.chart14d, 'impressions')}
+          icon={<BarChart3 size={20} />}
+        />
+        <MetricCard
+          title="Engajamento (30d)"
+          value={metrics.current.engagement.toFixed(2)}
+          delta={calculateDelta(metrics.chart14d, 'engagement')}
+          icon={<TrendingUp size={20} />}
+        />
+        <MetricCard title="Alcance (30d)" value={formatNumber(metrics.current.reach)} icon={<Activity size={20} />} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-4">
-        <MetricCard title="Posts (30d)" value={summary.posts30d} icon={<BarChart3 size={20} />} />
-        <MetricCard title="Views (30d)" value={summary.views30d} icon={<Eye size={20} />} />
-        <MetricCard title="Likes (30d)" value={summary.likes30d} icon={<Heart size={20} />} />
-        <MetricCard title="Followers total" value={summary.followersTotal} icon={<Users size={20} />} />
-      </div>
-
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Desempenho últimos 14 dias</h2>
-            <p className="text-sm text-slate-400">Fallback visual com mock data quando o endpoint analítico ainda não estiver disponível.</p>
-          </div>
-          {loading ? <span className="text-sm text-slate-500">Carregando...</span> : null}
+      <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-white">Desempenho dos últimos 14 dias</h2>
+          <p className="mt-1 text-sm text-slate-400">Impressões e engajamento capturados diretamente da API do LinkedIn.</p>
         </div>
 
-        <div className="h-80">
+        <div className="h-[360px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={series}>
-              <XAxis dataKey="date" stroke="#64748b" tickLine={false} axisLine={false} />
+            <LineChart data={chartData}>
+              <XAxis dataKey="shortDate" stroke="#64748b" tickLine={false} axisLine={false} />
               <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#0f172a',
                   borderColor: '#1e293b',
-                  borderRadius: 16,
+                  borderRadius: 18,
                   color: '#e2e8f0'
                 }}
               />
-              <Line type="monotone" dataKey="views" stroke="#2563eb" strokeWidth={3} dot={false} />
-              <Line type="monotone" dataKey="likes" stroke="#38bdf8" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="impressions" stroke="#2563eb" strokeWidth={3} dot={false} />
+              <Line type="monotone" dataKey="engagement" stroke="#38bdf8" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

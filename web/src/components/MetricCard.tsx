@@ -14,7 +14,7 @@ export default function MetricCard({ title, value, delta, icon }: MetricCardProp
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-400">{title}</p>
           <p className="mt-3 text-3xl font-bold text-white">{value}</p>
-          {delta ? <p className="mt-2 text-sm text-slate-400">{delta}</p> : null}
+          {delta ? <p className="mt-2 text-sm text-emerald-300">{delta}</p> : null}
         </div>
         {icon ? <div className="text-blue-400">{icon}</div> : null}
       </div>

@@ -6,6 +6,19 @@ import { OAuthService } from './oauth.service';
 const router = Router();
 const accountService = new AccountService();
 
+function normalizePlatform(platform: unknown): Platform | null {
+  if (typeof platform !== 'string') {
+    return null;
+  }
+
+  const normalized = platform.trim().toUpperCase();
+  if (normalized === 'LINKEDIN' || normalized === 'FACEBOOK') {
+    return normalized as Platform;
+  }
+
+  return null;
+}
+
 function sendOAuthResult(
   res: Response,
   provider: 'linkedin' | 'facebook',
@@ -113,6 +126,42 @@ router.get('/linkedin/callback', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('LinkedIn OAuth error:', error);
     return sendOAuthResult(res, 'linkedin', false, undefined, 'OAuth failed');
+  }
+});
+
+// Create or update account manually using JWT-authenticated user
+router.put('/manual', async (req: Request, res: Response) => {
+  try {
+    const normalizedPlatform = normalizePlatform(req.body.platform);
+    const accessToken = String(req.body.accessToken || '').trim();
+    const externalId = String(req.body.externalId || '').trim();
+    const displayName = String(req.body.displayName || '').trim();
+
+    if (!normalizedPlatform || !accessToken || !externalId || !displayName) {
+      return res.status(400).json({
+        error: 'Missing required fields: platform, accessToken, externalId, displayName'
+      });
+    }
+
+    const account = await accountService.createAccount({
+      userId: req.user!.id,
+      platform: normalizedPlatform,
+      accountName: displayName,
+      accountType: normalizedPlatform === 'LINKEDIN' ? 'PROFILE' : 'PAGE',
+      accessToken,
+      externalId
+    });
+
+    res.json({
+      id: account.id,
+      platform: normalizedPlatform.toLowerCase(),
+      displayName: account.accountName,
+      externalId: account.externalId,
+      connectedAt: account.updatedAt
+    });
+  } catch (error) {
+    console.error('Error saving manual account:', error);
+    res.status(500).json({ error: 'Failed to save manual account' });
   }
 });
 
