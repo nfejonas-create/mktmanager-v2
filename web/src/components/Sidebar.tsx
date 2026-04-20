@@ -1,7 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Calendar,
-  ChevronDown,
   Clock,
   Database,
   FileText,
@@ -26,11 +25,10 @@ const menuItems = [
 const SYSTEM_VERSION = '2.1.0';
 
 export default function Sidebar() {
-  const { user, users, switchUser, logout } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const [serverTime, setServerTime] = useState('');
   const [localTime, setLocalTime] = useState('');
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const activeUserInitial = useMemo(() => user?.name?.charAt(0)?.toUpperCase() || 'U', [user]);
 
@@ -115,52 +113,14 @@ export default function Sidebar() {
         </div>
 
         {user && (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsUserMenuOpen((value) => !value)}
-              className="w-full flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl hover:bg-slate-800 transition-colors"
-            >
-              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                {activeUserInitial}
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-white truncate">{user.name}</p>
-                <p className="text-xs text-slate-400 truncate">{user.email}</p>
-              </div>
-              <ChevronDown size={16} className="text-slate-400" />
-            </button>
-
-            {isUserMenuOpen && (
-              <div className="absolute bottom-full mb-2 w-full rounded-xl border border-slate-800 bg-slate-950 shadow-2xl overflow-hidden z-20">
-                <div className="px-3 py-2 text-xs font-medium text-slate-500 border-b border-slate-800">
-                  Trocar usuário sem sair
-                </div>
-                {users.map((candidate) => (
-                  <button
-                    key={candidate.id}
-                    type="button"
-                    onClick={() => {
-                      switchUser(candidate.id);
-                      setIsUserMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-3 text-left text-sm transition-colors ${
-                      user.id === candidate.id
-                        ? 'bg-blue-600/15 text-blue-300'
-                        : 'text-slate-300 hover:bg-slate-900'
-                    }`}
-                  >
-                    <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center font-semibold">
-                      {candidate.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate">{candidate.name}</p>
-                      <p className="text-xs text-slate-500 truncate">{candidate.email}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl">
+            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+              {activeUserInitial}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white truncate">{user.name}</p>
+              <p className="text-xs text-slate-400 truncate">{user.email}</p>
+            </div>
           </div>
         )}
 
