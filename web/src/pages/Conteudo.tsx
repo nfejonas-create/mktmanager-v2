@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -94,6 +94,7 @@ export default function Conteudo() {
   const [publishingId, setPublishingId] = useState<string | null>(null);
 
   const [socialAccountId, setSocialAccountId] = useState('');
+  const [generatePlatform, setGeneratePlatform] = useState<'LINKEDIN' | 'FACEBOOK'>('LINKEDIN');
   const [contentType, setContentType] = useState<'TEXT' | 'IMAGE' | 'TEXT_IMAGE'>('TEXT');
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState('Tecnico');
@@ -109,11 +110,6 @@ export default function Conteudo() {
     void fetchPosts();
   }, []);
 
-  const selectedAccount = useMemo(
-    () => accounts.find((account) => account.id === socialAccountId),
-    [accounts, socialAccountId]
-  );
-
   async function fetchAccounts() {
     try {
       const response = await api.get('/accounts');
@@ -123,6 +119,7 @@ export default function Conteudo() {
       const defaultAccount = fetchedAccounts.find((account) => account.isDefault) || fetchedAccounts[0];
       if (defaultAccount) {
         setSocialAccountId(defaultAccount.id);
+        setGeneratePlatform(defaultAccount.platform);
       }
     } catch (error) {
       console.error('Error fetching accounts:', error);
@@ -142,13 +139,13 @@ export default function Conteudo() {
   }
 
   async function handleGenerateContent() {
-    if (!topic || !selectedAccount) return;
+    if (!topic) return;
 
     setGenerating(true);
     try {
       const response = await api.post('/content/generate', {
         topic,
-        platform: selectedAccount.platform,
+        platform: generatePlatform,
         tone
       });
 
@@ -261,10 +258,17 @@ export default function Conteudo() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">Conta social</label>
+                <label className="block text-sm text-slate-400 mb-2">Conta social para salvar/publicar</label>
                 <select
                   value={socialAccountId}
-                  onChange={(e) => setSocialAccountId(e.target.value)}
+                  onChange={(e) => {
+                    const nextId = e.target.value;
+                    setSocialAccountId(nextId);
+                    const nextAccount = accounts.find((account) => account.id === nextId);
+                    if (nextAccount) {
+                      setGeneratePlatform(nextAccount.platform);
+                    }
+                  }}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-blue-500"
                 >
                   <option value="">Selecione uma conta</option>
@@ -277,7 +281,7 @@ export default function Conteudo() {
                 </select>
                 {accounts.length === 0 && (
                   <p className="mt-2 text-sm text-amber-300">
-                    Nenhuma conta conectada. <Link to="/contas" className="underline">Conecte uma conta em Contas</Link>.
+                    Nenhuma conta conectada. Você ainda pode gerar conteúdo por plataforma e conectar a conta depois em <Link to="/contas" className="underline">Contas</Link>.
                   </p>
                 )}
               </div>
@@ -301,6 +305,32 @@ export default function Conteudo() {
                   ))}
                 </div>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-slate-400 mb-2">Plataforma para gerar</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: 'LINKEDIN', label: 'LinkedIn' },
+                  { value: 'FACEBOOK', label: 'Facebook' }
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setGeneratePlatform(item.value as 'LINKEDIN' | 'FACEBOOK')}
+                    className={`rounded-xl border px-3 py-3 text-sm transition-colors ${
+                      generatePlatform === item.value
+                        ? 'border-blue-500 bg-blue-600/15 text-blue-300'
+                        : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Essa escolha define a formatação da geração. Não depende da conta estar conectada.
+              </p>
             </div>
 
             <div>
@@ -341,12 +371,12 @@ export default function Conteudo() {
                     <Sparkles size={16} className="text-blue-400" />
                     Gerar com IA
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">Usa a conta selecionada para inferir a plataforma correta.</p>
+                  <p className="text-xs text-slate-500 mt-1">Gera no formato correto de {generatePlatform === 'LINKEDIN' ? 'LinkedIn' : 'Facebook'}, mesmo sem conta conectada.</p>
                 </div>
                 <button
                   type="button"
                   onClick={handleGenerateContent}
-                  disabled={!topic || !selectedAccount || generating}
+                  disabled={!topic || generating}
                   className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
                 >
                   <Wand2 size={16} />
@@ -503,7 +533,7 @@ export default function Conteudo() {
               <ul className="space-y-3 text-sm text-slate-300">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 size={14} className="text-emerald-400 mt-0.5" />
-                  Selecione a conta correta para evitar cruzamento de dados entre Jonas e Niulane.
+                  Gere primeiro por plataforma. Só selecione conta quando quiser salvar/publicar.
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 size={14} className="text-emerald-400 mt-0.5" />

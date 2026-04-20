@@ -20,6 +20,8 @@ export default function Contas() {
   const { user } = useAuth();
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [manualLinkedIn, setManualLinkedIn] = useState({ accountName: '', externalId: '', accessToken: '' });
+  const [manualFacebook, setManualFacebook] = useState({ accountName: '', externalId: '', accessToken: '' });
 
   const linkedInAccounts = useMemo(() => accounts.filter((account) => account.platform === 'LINKEDIN'), [accounts]);
   const facebookAccounts = useMemo(() => accounts.filter((account) => account.platform === 'FACEBOOK'), [accounts]);
@@ -71,6 +73,37 @@ export default function Contas() {
     } catch (error) {
       console.error('Error deleting account:', error);
       alert('Erro ao remover conta.');
+    }
+  }
+
+  async function handleManualConnect(platform: 'LINKEDIN' | 'FACEBOOK') {
+    const form = platform === 'LINKEDIN' ? manualLinkedIn : manualFacebook;
+
+    if (!form.accountName.trim() || !form.externalId.trim() || !form.accessToken.trim()) {
+      alert(`Preencha nome, ID e token de ${platform === 'LINKEDIN' ? 'LinkedIn' : 'Facebook'}.`);
+      return;
+    }
+
+    try {
+      await api.post('/accounts', {
+        platform,
+        accountName: form.accountName.trim(),
+        accountType: platform === 'LINKEDIN' ? 'PROFILE' : 'PAGE',
+        accessToken: form.accessToken.trim(),
+        externalId: form.externalId.trim()
+      });
+
+      if (platform === 'LINKEDIN') {
+        setManualLinkedIn({ accountName: '', externalId: '', accessToken: '' });
+      } else {
+        setManualFacebook({ accountName: '', externalId: '', accessToken: '' });
+      }
+
+      await fetchAccounts();
+      alert(`${platform === 'LINKEDIN' ? 'LinkedIn' : 'Facebook'} conectado manualmente com sucesso.`);
+    } catch (error) {
+      console.error('Error creating manual account:', error);
+      alert('Erro ao salvar conta manualmente.');
     }
   }
 
@@ -154,6 +187,36 @@ export default function Contas() {
           >
             Conectar nova conta do LinkedIn
           </button>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+            <p className="text-sm font-medium text-white">Conexão manual</p>
+            <p className="text-xs text-slate-500">Use token + Member ID + nome para publicar mesmo sem OAuth automático.</p>
+            <input
+              value={manualLinkedIn.accountName}
+              onChange={(e) => setManualLinkedIn((prev) => ({ ...prev, accountName: e.target.value }))}
+              placeholder="Nome da conta"
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+            />
+            <input
+              value={manualLinkedIn.externalId}
+              onChange={(e) => setManualLinkedIn((prev) => ({ ...prev, externalId: e.target.value }))}
+              placeholder="Member ID / externalId"
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+            />
+            <textarea
+              value={manualLinkedIn.accessToken}
+              onChange={(e) => setManualLinkedIn((prev) => ({ ...prev, accessToken: e.target.value }))}
+              placeholder="Access Token"
+              rows={3}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm resize-none"
+            />
+            <button
+              type="button"
+              onClick={() => void handleManualConnect('LINKEDIN')}
+              className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            >
+              Salvar LinkedIn manualmente
+            </button>
+          </div>
           <div className="space-y-3">
             {linkedInAccounts.length === 0 ? (
               <p className="text-sm text-slate-400">Nenhuma conta do LinkedIn conectada para este usuário.</p>
@@ -175,6 +238,36 @@ export default function Contas() {
           >
             Conectar nova página do Facebook
           </button>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+            <p className="text-sm font-medium text-white">Conexão manual</p>
+            <p className="text-xs text-slate-500">Use Page Token + Page ID + nome da página para publicar sem depender do OAuth.</p>
+            <input
+              value={manualFacebook.accountName}
+              onChange={(e) => setManualFacebook((prev) => ({ ...prev, accountName: e.target.value }))}
+              placeholder="Nome da página"
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+            />
+            <input
+              value={manualFacebook.externalId}
+              onChange={(e) => setManualFacebook((prev) => ({ ...prev, externalId: e.target.value }))}
+              placeholder="Page ID"
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm"
+            />
+            <textarea
+              value={manualFacebook.accessToken}
+              onChange={(e) => setManualFacebook((prev) => ({ ...prev, accessToken: e.target.value }))}
+              placeholder="Page Access Token"
+              rows={3}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm resize-none"
+            />
+            <button
+              type="button"
+              onClick={() => void handleManualConnect('FACEBOOK')}
+              className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            >
+              Salvar Facebook manualmente
+            </button>
+          </div>
           <div className="space-y-3">
             {facebookAccounts.length === 0 ? (
               <p className="text-sm text-slate-400">Nenhuma página do Facebook conectada para este usuário.</p>
