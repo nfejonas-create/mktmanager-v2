@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Linkedin, Facebook, Star, Trash2 } from 'lucide-react';
-import api from '../api/api';
+import api from '../services/api';
 
 interface SocialAccount {
   id: string;

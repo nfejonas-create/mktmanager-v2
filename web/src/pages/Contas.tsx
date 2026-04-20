@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, Facebook, Linkedin, Star, Trash2, UserRound } from 'lucide-react';
-import api from '../api/api';
+import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SocialAccount {
@@ -281,10 +281,10 @@ export default function Contas() {
       <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
         <div className="flex items-center gap-2 text-white font-semibold mb-3">
           <UserRound className="w-5 h-5 text-emerald-400" />
-          Troca rápida de usuário
+          Conta ativa
         </div>
         <p className="text-sm text-slate-400">
-          Use o seletor no rodapé da barra lateral para alternar entre Jonas e Niulane sem sair do sistema.
+          As conexões abaixo pertencem somente ao usuário autenticado e ficam isoladas no backend v2.
         </p>
       </div>
     </div>

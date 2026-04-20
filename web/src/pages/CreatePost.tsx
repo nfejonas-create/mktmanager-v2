@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, Image, Wand2, Calendar } from 'lucide-react';
-import api from '../api/api';
+import api from '../services/api';
 
 interface SocialAccount {
   id: string;
