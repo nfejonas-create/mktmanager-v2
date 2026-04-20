@@ -1,7 +1,6 @@
-import { PrismaClient, SocialAccount, Platform } from '@prisma/client';
+import { SocialAccount, Platform } from '@prisma/client';
+import { prisma } from '../../shared/database/prisma.client';
 import { EncryptionService } from '../../shared/security/encryption.service';
-
-const prisma = new PrismaClient();
 
 export interface CreateAccountData {
   userId: string;
@@ -127,6 +126,12 @@ export class AccountService {
     await prisma.socialAccount.update({
       where: { id },
       data: { isActive: false }
+    });
+  }
+
+  async getOwnedAccount(id: string, userId: string): Promise<SocialAccount | null> {
+    return prisma.socialAccount.findFirst({
+      where: { id, userId, isActive: true }
     });
   }
   

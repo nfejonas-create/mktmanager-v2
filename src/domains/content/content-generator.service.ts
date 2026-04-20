@@ -1,208 +1,188 @@
 import axios from 'axios';
 import { Platform } from '@prisma/client';
+import type { AIProvider } from '../automation/automation.types';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+export interface GenerateContentInput {
+  userId: string;
+  prompt: string;
+  aiProvider: AIProvider;
+  aiApiKey: string;
+  platform?: Platform;
+}
+
+export interface GeneratedContent {
+  content: string;
+  hashtags: string[];
+  imagePrompt?: string;
+  imageUrl?: string;
+}
 
 export class ContentGeneratorService {
-  private apiKey: string;
-  
-  constructor() {
-    this.apiKey = process.env.ANTHROPIC_API_KEY || '';
+  async generate(input: GenerateContentInput): Promise<GeneratedContent> {
+    if (!input.aiApiKey || input.aiApiKey.startsWith('mock_')) {
+      return this.generateMockContent(input);
+    }
+
+    try {
+      switch (input.aiProvider) {
+        case 'OPENAI':
+          return await this.generateWithOpenAI(input);
+        case 'ANTHROPIC':
+          return await this.generateWithAnthropic(input);
+        case 'GEMINI':
+          return await this.generateWithGemini(input);
+        default:
+          return this.generateMockContent(input);
+      }
+    } catch (error) {
+      console.error(`Error generating content for user ${input.userId}:`, error);
+      return this.generateMockContent(input);
+    }
   }
-  
+
   async generatePost(topic: string, platform: Platform, tone?: string): Promise<{
     content: string;
     hashtags: string[];
   }> {
-    // For development with mock API key
-    if (this.apiKey === 'mock_anthropic_key' || !this.apiKey) {
-      return this.generateMockContent(topic, platform);
-    }
-    
-    const platformGuidelines = this.getPlatformGuidelines(platform);
-    const toneGuideline = tone || this.getDefaultTone(platform);
-    
-    const prompt = `Gere um post para ${platform} sobre o tema: "${topic}".
+    const prompt = [
+      `Tema: ${topic}`,
+      `Plataforma: ${platform}`,
+      tone ? `Tom: ${tone}` : undefined
+    ].filter(Boolean).join('\n');
 
-Diretrizes da plataforma:
-${platformGuidelines}
+    const result = await this.generate({
+      userId: 'manual-preview',
+      prompt,
+      aiProvider: 'ANTHROPIC',
+      aiApiKey: process.env.ANTHROPIC_API_KEY || '',
+      platform
+    });
 
-Tom de voz: ${toneGuideline}
-
-Requisitos:
-- Texto envolvente e relevante
-- Inclua 3-5 hashtags relevantes no final
-- Formate para fácil leitura
-- Inclua um call-to-action sutil
-
-Responda em formato JSON:
-{
-  "content": "texto do post aqui",
-  "hashtags": ["#hashtag1", "#hashtag2", "#hashtag3"]
-}`;
-
-    try {
-      const response = await axios.post(
-        ANTHROPIC_API_URL,
-        {
-          model: 'claude-3-sonnet-20240229',
-          max_tokens: 1000,
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ]
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': this.apiKey,
-            'anthropic-version': '2023-06-01'
-          }
-        }
-      );
-      
-      const content = response.data.content[0].text;
-      const parsed = JSON.parse(content);
-      
-      return {
-        content: parsed.content,
-        hashtags: parsed.hashtags
-      };
-    } catch (error) {
-      console.error('Error generating content:', error);
-      return this.generateMockContent(topic, platform);
-    }
-  }
-  
-  async generateHashtags(topic: string, count: number = 5): Promise<string[]> {
-    // For development with mock API key
-    if (this.apiKey === 'mock_anthropic_key' || !this.apiKey) {
-      return this.generateMockHashtags(topic, count);
-    }
-    
-    const prompt = `Gere ${count} hashtags relevantes para o tema: "${topic}".
-Responda apenas com um array JSON de strings.`;
-
-    try {
-      const response = await axios.post(
-        ANTHROPIC_API_URL,
-        {
-          model: 'claude-3-sonnet-20240229',
-          max_tokens: 200,
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ]
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': this.apiKey,
-            'anthropic-version': '2023-06-01'
-          }
-        }
-      );
-      
-      const content = response.data.content[0].text;
-      return JSON.parse(content);
-    } catch (error) {
-      console.error('Error generating hashtags:', error);
-      return this.generateMockHashtags(topic, count);
-    }
-  }
-  
-  private getPlatformGuidelines(platform: Platform): string {
-    switch (platform) {
-      case 'LINKEDIN':
-        return `- Profissional e formal
-- Foque em insights e valor profissional
-- Use parágrafos curtos
-- Ideal: 100-300 palavras
-- Inclua contexto de indústria quando relevante`;
-      
-      case 'FACEBOOK':
-        return `- Tom mais casual e pessoal
-- Perguntas e engajamento funcionam bem
-- Use emojis moderadamente
-- Ideal: 40-80 palavras
-- Foque em comunidade e conversa`;
-      
-      default:
-        return '- Tom neutro e informativo';
-    }
-  }
-  
-  private getDefaultTone(platform: Platform): string {
-    switch (platform) {
-      case 'LINKEDIN':
-        return 'profissional, inspirador, educativo';
-      case 'FACEBOOK':
-        return 'amigável, conversacional, engajador';
-      default:
-        return 'neutro';
-    }
-  }
-  
-  private generateMockContent(topic: string, platform: Platform): {
-    content: string;
-    hashtags: string[];
-  } {
-    const templates = {
-      LINKEDIN: [
-        `Estou refletindo sobre ${topic} e como isso impacta nossa indústria. É fascinante ver como as tendências evoluem e criam novas oportunidades para inovação.
-
-O que você tem observado sobre esse tema? Compartilhe sua perspectiva nos comentários. 👇`,
-        
-        `Dica profissional sobre ${topic}:
-
-✅ Mantenha-se atualizado com as últimas tendências
-✅ Conecte-se com profissionais da área
-✅ Aplique o aprendizado em projetos práticos
-
-A jornada do conhecimento é contínua. Qual sua experiência com esse tema?`
-      ],
-      FACEBOOK: [
-        `Quem mais está pensando sobre ${topic}? 🤔
-
-Acho incrível como esse assunto tem gerado tantas conversas interessantes ultimamente. O que você acha?
-
-Deixe sua opinião nos comentários! 👇`,
-        
-        `Hoje estou compartilhando algo sobre ${topic} que pode te interessar! 😊
-
-Às vezes as melhores ideias vêm quando menos esperamos. Você já teve uma experiência assim?`
-      ]
-    };
-    
-    const platformTemplates = templates[platform] || templates.LINKEDIN;
-    const randomTemplate = platformTemplates[Math.floor(Math.random() * platformTemplates.length)];
-    
-    const hashtags = this.generateMockHashtags(topic, 5);
-    
     return {
-      content: randomTemplate,
-      hashtags
+      content: result.content,
+      hashtags: result.hashtags
     };
   }
-  
+
+  async generateHashtags(topic: string, count: number = 5): Promise<string[]> {
+    return this.generateMockHashtags(topic, count);
+  }
+
+  private buildPrompt(input: GenerateContentInput) {
+    return [
+      `User: ${input.userId}`,
+      input.platform ? `Platform: ${input.platform}` : undefined,
+      input.prompt,
+      'Responda em JSON com {"content":"...","hashtags":["#..."],"imagePrompt":"..."}'
+    ].filter(Boolean).join('\n\n');
+  }
+
+  private async generateWithAnthropic(input: GenerateContentInput): Promise<GeneratedContent> {
+    const response = await axios.post(
+      ANTHROPIC_API_URL,
+      {
+        model: 'claude-3-sonnet-20240229',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: this.buildPrompt(input) }]
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': input.aiApiKey,
+          'anthropic-version': '2023-06-01'
+        }
+      }
+    );
+
+    return this.parseProviderResponse(response.data.content?.[0]?.text, input);
+  }
+
+  private async generateWithOpenAI(input: GenerateContentInput): Promise<GeneratedContent> {
+    const response = await axios.post(
+      OPENAI_API_URL,
+      {
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: this.buildPrompt(input) }],
+        response_format: { type: 'json_object' }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${input.aiApiKey}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    return this.parseProviderResponse(response.data.choices?.[0]?.message?.content, input);
+  }
+
+  private async generateWithGemini(input: GenerateContentInput): Promise<GeneratedContent> {
+    const response = await axios.post(
+      `${GEMINI_API_URL}?key=${encodeURIComponent(input.aiApiKey)}`,
+      {
+        contents: [{ parts: [{ text: this.buildPrompt(input) }] }]
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    return this.parseProviderResponse(
+      response.data.candidates?.[0]?.content?.parts?.[0]?.text,
+      input
+    );
+  }
+
+  private parseProviderResponse(rawText: string | undefined, input: GenerateContentInput): GeneratedContent {
+    if (!rawText) {
+      return this.generateMockContent(input);
+    }
+
+    try {
+      const parsed = JSON.parse(rawText);
+      return {
+        content: String(parsed.content || '').trim(),
+        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags.map(String) : [],
+        imagePrompt: parsed.imagePrompt ? String(parsed.imagePrompt) : undefined
+      };
+    } catch {
+      return this.generateMockContent(input);
+    }
+  }
+
+  private generateMockContent(input: GenerateContentInput): GeneratedContent {
+    const normalizedPrompt = input.prompt.trim();
+    const shortPrompt = normalizedPrompt.length > 220
+      ? `${normalizedPrompt.slice(0, 217)}...`
+      : normalizedPrompt;
+
+    return {
+      content: `[${input.aiProvider}] ${shortPrompt}\n\nGerado para o usuário ${input.userId}.`,
+      hashtags: this.generateMockHashtags(shortPrompt, 5),
+      imagePrompt: `Crie uma imagem para: ${shortPrompt}`,
+      imageUrl: undefined
+    };
+  }
+
   private generateMockHashtags(topic: string, count: number): string[] {
-    const baseHashtags = [
-      `#${topic.replace(/\s+/g, '')}`,
-      '#Inovação',
-      '#Crescimento',
-      '#Sucesso',
-      '#Dicas',
-      '#Aprendizado',
-      '#Desenvolvimento',
-      '#Tendências',
-      '#Networking',
-      '#Profissional'
-    ];
-    
-    return baseHashtags.slice(0, count);
+    const words = topic
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, count);
+
+    const generated = words.map((word) => `#${word.replace(/\s+/g, '')}`);
+
+    while (generated.length < count) {
+      generated.push(`#PostFlow${generated.length + 1}`);
+    }
+
+    return generated;
   }
 }

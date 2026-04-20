@@ -17,11 +17,11 @@ interface KbItem {
 }
 
 function storageKey(userId?: string | null) {
-  return `knowledgeBase:${userId || 'jonas'}`;
+  return `knowledgeBase:${userId || 'anonymous'}`;
 }
 
 export default function BaseConhecimento() {
-  const { currentUserId } = useAuth();
+  const { user } = useAuth();
   const [items, setItems] = useState<KbItem[]>([]);
   const [tab, setTab] = useState<Tab>('list');
   const [search, setSearch] = useState('');
@@ -40,17 +40,17 @@ export default function BaseConhecimento() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const raw = localStorage.getItem(storageKey(currentUserId));
+      const raw = localStorage.getItem(storageKey(user?.id));
       setItems(raw ? JSON.parse(raw) : []);
     } catch {
       setItems([]);
     }
-  }, [currentUserId]);
+  }, [user?.id]);
 
   function persist(nextItems: KbItem[]) {
     setItems(nextItems);
     if (typeof window !== 'undefined') {
-      localStorage.setItem(storageKey(currentUserId), JSON.stringify(nextItems));
+      localStorage.setItem(storageKey(user?.id), JSON.stringify(nextItems));
     }
   }
 

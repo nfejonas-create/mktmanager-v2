@@ -4,9 +4,11 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { PostService } from './post.service';
 import { PostStatus } from '@prisma/client';
+import { AccountService } from '../social-accounts/account.service';
 
 const router = Router();
 const postService = new PostService();
+const accountService = new AccountService();
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -35,11 +37,10 @@ const upload = multer({
 // Get all posts
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const userId = req.query.userId as string || 'default';
     const status = req.query.status as PostStatus | undefined;
     const socialAccountId = req.query.socialAccountId as string | undefined;
     
-    const posts = await postService.getPostsByUser(userId, {
+    const posts = await postService.getPostsByUser(req.user!.id, {
       status,
       socialAccountId,
       limit: parseInt(req.query.limit as string) || 50,
@@ -56,8 +57,7 @@ router.get('/', async (req: Request, res: Response) => {
 // Get dashboard stats
 router.get('/stats', async (req: Request, res: Response) => {
   try {
-    const userId = req.query.userId as string || 'default';
-    const stats = await postService.getDashboardStats(userId);
+    const stats = await postService.getDashboardStats(req.user!.id);
     res.json(stats);
   } catch (error) {
     console.error('Error fetching stats:', error);
@@ -71,7 +71,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const post = await postService.getPostById(id);
     
-    if (!post) {
+    if (!post || post.userId !== req.user!.id) {
       return res.status(404).json({ error: 'Post not found' });
     }
     
@@ -94,8 +94,6 @@ router.post('/', async (req: Request, res: Response) => {
       publishNow
     } = req.body;
     
-    const userId = req.body.userId || 'default';
-    
     // Validate required fields
     if (!socialAccountId || !content || !contentType) {
       return res.status(400).json({ 
@@ -103,9 +101,14 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
     
+    const socialAccount = await accountService.getOwnedAccount(socialAccountId, req.user!.id);
+    if (!socialAccount) {
+      return res.status(404).json({ error: 'Social account not found' });
+    }
+
     // Create post
     const post = await postService.createPost({
-      userId,
+      userId: req.user!.id,
       socialAccountId,
       content,
       contentType,
@@ -135,7 +138,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { content, contentType, mediaUrls, scheduledAt } = req.body;
     
     const post = await postService.getPostById(id);
-    if (!post) {
+    if (!post || post.userId !== req.user!.id) {
       return res.status(404).json({ error: 'Post not found' });
     }
     
@@ -164,7 +167,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     
     const post = await postService.getPostById(id);
-    if (!post) {
+    if (!post || post.userId !== req.user!.id) {
       return res.status(404).json({ error: 'Post not found' });
     }
     
@@ -182,7 +185,7 @@ router.post('/:id/publish-now', async (req: Request, res: Response) => {
     const { id } = req.params;
     
     const post = await postService.getPostById(id);
-    if (!post) {
+    if (!post || post.userId !== req.user!.id) {
       return res.status(404).json({ error: 'Post not found' });
     }
     

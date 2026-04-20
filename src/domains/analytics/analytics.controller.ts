@@ -9,8 +9,7 @@ const postService = new PostService();
 // Get dashboard data
 router.get('/dashboard', async (req: Request, res: Response) => {
   try {
-    const userId = req.query.userId as string || 'default';
-    const data = await metricsService.getDashboardData(userId);
+    const data = await metricsService.getDashboardData(req.user!.id);
     res.json(data);
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
@@ -24,7 +23,7 @@ router.get('/posts/:id/metrics', async (req: Request, res: Response) => {
     const { id } = req.params;
     
     const post = await postService.getPostById(id);
-    if (!post) {
+    if (!post || post.userId !== req.user!.id) {
       return res.status(404).json({ error: 'Post not found' });
     }
     
