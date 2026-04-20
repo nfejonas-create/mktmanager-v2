@@ -1,12 +1,16 @@
-import axios from 'axios';
+import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import { clearAuthStorage, getStoredToken } from '../contexts/AuthContext';
 
 const fallbackApiUrl = 'https://postflow-backend-cspj.onrender.com/api';
 
+interface ApiClient extends AxiosInstance {
+  upload<T = unknown>(url: string, formData: FormData, config?: AxiosRequestConfig<FormData>): Promise<AxiosResponse<T>>;
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || fallbackApiUrl,
   timeout: 15000
-});
+}) as ApiClient;
 
 api.interceptors.request.use((config) => {
   const token = getStoredToken();
@@ -31,5 +35,15 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+api.upload = function upload(url, formData, config) {
+  return api.post(url, formData, {
+    ...config,
+    headers: {
+      ...(config?.headers || {}),
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
 
 export default api;
