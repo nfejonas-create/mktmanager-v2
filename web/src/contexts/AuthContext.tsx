@@ -1,10 +1,15 @@
-import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
-interface AppUser {
+export interface AppUser {
   id: string;
   name: string;
   email: string;
   avatar?: string;
+}
+
+interface CreateUserInput {
+  name: string;
+  email: string;
 }
 
 interface AuthContextData {
@@ -15,13 +20,15 @@ interface AuthContextData {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   switchUser: (userId: string) => void;
+  addUser: (input: CreateUserInput) => { success: boolean; message?: string };
   isLoading: boolean;
 }
 
 const STORAGE_KEYS = {
   token: 'token',
   user: 'user',
-  currentUserId: 'currentUserId'
+  currentUserId: 'currentUserId',
+  users: 'appUsers'
 };
 
 const DEFAULT_USERS: AppUser[] = [
@@ -30,6 +37,28 @@ const DEFAULT_USERS: AppUser[] = [
 ];
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
+
+function slugify(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function getStoredUsers(): AppUser[] {
+  if (typeof window === 'undefined') return DEFAULT_USERS;
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.users);
+    if (!raw) return DEFAULT_USERS;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_USERS;
+  } catch {
+    return DEFAULT_USERS;
+  }
+}
 
 function getStoredUser(): AppUser | null {
   if (typeof window === 'undefined') return null;
@@ -42,6 +71,11 @@ function getStoredUser(): AppUser | null {
   }
 }
 
+function persistUsers(users: AppUser[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
+}
+
 function persistSession(token: string, user: AppUser) {
   if (typeof window === 'undefined') return;
 
@@ -52,11 +86,10 @@ function persistSession(token: string, user: AppUser) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
+  const [users, setUsers] = useState<AppUser[]>(DEFAULT_USERS);
   const [token, setToken] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const users = useMemo(() => DEFAULT_USERS, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -65,9 +98,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const storedUsers = getStoredUsers();
       const storedToken = localStorage.getItem(STORAGE_KEYS.token);
       const storedCurrentUserId = localStorage.getItem(STORAGE_KEYS.currentUserId);
       const storedUser = getStoredUser();
+
+      setUsers(storedUsers);
 
       if (storedToken && storedUser) {
         setToken(storedToken);
@@ -79,6 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(STORAGE_KEYS.token);
       localStorage.removeItem(STORAGE_KEYS.user);
       localStorage.removeItem(STORAGE_KEYS.currentUserId);
+      localStorage.removeItem(STORAGE_KEYS.users);
+      setUsers(DEFAULT_USERS);
     }
 
     setIsLoading(false);
@@ -113,6 +151,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUserId(nextUser.id);
   };
 
+  const addUser = (input: CreateUserInput) => {
+    const name = input.name.trim();
+    const email = input.email.trim().toLowerCase();
+
+    if (!name || !email) {
+      return { success: false, message: 'Nome e email são obrigatórios.' };
+    }
+
+    if (users.some((candidate) => candidate.email.toLowerCase() === email)) {
+      return { success: false, message: 'Já existe um usuário com esse email.' };
+    }
+
+    const baseId = slugify(name) || `user-${Date.now()}`;
+    let nextId = baseId;
+    let counter = 2;
+
+    while (users.some((candidate) => candidate.id === nextId)) {
+      nextId = `${baseId}-${counter++}`;
+    }
+
+    const nextUser: AppUser = { id: nextId, name, email };
+    const nextUsers = [...users, nextUser];
+
+    setUsers(nextUsers);
+    persistUsers(nextUsers);
+
+    return { success: true };
+  };
+
   const logout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_KEYS.token);
@@ -125,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, users, token, currentUserId, login, logout, switchUser, isLoading }}>
+    <AuthContext.Provider value={{ user, users, token, currentUserId, login, logout, switchUser, addUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
