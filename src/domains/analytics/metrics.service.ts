@@ -1,9 +1,8 @@
 import axios from 'axios';
-import { PrismaClient, Post, SocialAccount, Platform } from '@prisma/client';
+import { Post, SocialAccount, Platform } from '@prisma/client';
 import { AccountService } from '../social-accounts/account.service';
 import { PostService } from '../publishing/post.service';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../shared/database/prisma.client';
 const accountService = new AccountService();
 const postService = new PostService();
 

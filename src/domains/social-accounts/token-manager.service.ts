@@ -1,8 +1,6 @@
-import { PrismaClient, SocialAccount } from '@prisma/client';
-import { OAuthService } from './oauth.service';
+import { SocialAccount } from '@prisma/client';
 import { AccountService } from './account.service';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../shared/database/prisma.client';
 const accountService = new AccountService();
 
 export class TokenManagerService {

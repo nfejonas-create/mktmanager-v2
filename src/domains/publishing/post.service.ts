@@ -1,6 +1,5 @@
-import { PrismaClient, Post, PostStatus, ContentType } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Post, PostStatus, ContentType } from '@prisma/client';
+import { prisma } from '../../shared/database/prisma.client';
 
 export interface CreatePostData {
   userId: string;
