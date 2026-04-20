@@ -50,3 +50,57 @@
    ```
    - uso no frontend:
      - gráfico de linha do `/dashboard`
+
+5. `POST /api/content/upload-material`
+   - payload esperado: `multipart/form-data`
+     - `file`
+     - `platform`
+     - `quantity`
+     - `tone`
+   - resposta esperada:
+   ```json
+   {
+     "posts": [
+       { "content": "..." }
+     ]
+   }
+   ```
+   - uso no frontend:
+     - aba `Upload de Material` em `/conteudo`
+
+6. `POST /api/content/analyze`
+   - payload esperado:
+   ```json
+   { "text": "conteúdo a ser analisado" }
+   ```
+   - resposta esperada:
+   ```json
+   {
+     "score": 8,
+     "strengths": ["..."],
+     "improvements": ["..."],
+     "rewritten": "..."
+   }
+   ```
+   - uso no frontend:
+     - aba `Analisar Texto` em `/conteudo`
+
+7. `POST /api/content/generate-week`
+   - payload esperado: vazio
+   - resposta esperada:
+   ```json
+   { "success": true, "created": 7 }
+   ```
+   - uso no frontend:
+     - botão `Gerar semana` no histórico
+
+8. `POST /api/posts/schedule-batch`
+   - payload esperado:
+   ```json
+   {
+     "dates": ["2026-04-20T09:00:00.000Z"],
+     "status": "DRAFT"
+   }
+   ```
+   - uso no frontend:
+     - botão `Agendar rascunhos` no histórico
