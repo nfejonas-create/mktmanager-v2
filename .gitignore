@@ -16,3 +16,8 @@ uploads/
 # IDE
 .vscode/
 .idea/
+
+# AI-Stack (keys globais ficam em ~/.ai-stack.env, nunca no repo)
+.ai-stack.env
+.aider*
+.claude/

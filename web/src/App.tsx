@@ -17,6 +17,7 @@ import Configuracoes from './pages/Configuracoes';
 import Contas from './pages/Contas';
 import PostDetails from './pages/PostDetails';
 import AuthCallback from './pages/AuthCallback';
+import { UsersPage } from './pages/admin/Users';
 
 // Error Boundary
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null, errorInfo: ErrorInfo | null }> {
@@ -107,6 +108,7 @@ function App() {
               <Route path="contas" element={<Contas />} />
               <Route path="configuracoes" element={<Configuracoes />} />
               <Route path="posts/:id" element={<PostDetails />} />
+              <Route path="admin/users" element={<UsersPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

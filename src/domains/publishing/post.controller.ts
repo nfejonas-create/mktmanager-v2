@@ -40,7 +40,7 @@ router.get('/', async (req: Request, res: Response) => {
     const status = req.query.status as PostStatus | undefined;
     const socialAccountId = req.query.socialAccountId as string | undefined;
     
-    const posts = await postService.getPostsByUser(req.user!.id, {
+    const posts = await postService.getPostsByUser(req.effectiveUserId!, {
       status,
       socialAccountId,
       limit: parseInt(req.query.limit as string) || 50,
@@ -57,7 +57,7 @@ router.get('/', async (req: Request, res: Response) => {
 // Get dashboard stats
 router.get('/stats', async (req: Request, res: Response) => {
   try {
-    const stats = await postService.getDashboardStats(req.user!.id);
+    const stats = await postService.getDashboardStats(req.effectiveUserId!);
     res.json(stats);
   } catch (error) {
     console.error('Error fetching stats:', error);
@@ -71,7 +71,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const post = await postService.getPostById(id);
     
-    if (!post || post.userId !== req.user!.id) {
+    if (!post || post.userId !== req.effectiveUserId!) {
       return res.status(404).json({ error: 'Post not found' });
     }
     
@@ -101,14 +101,14 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
     
-    const socialAccount = await accountService.getOwnedAccount(socialAccountId, req.user!.id);
+    const socialAccount = await accountService.getOwnedAccount(socialAccountId, req.effectiveUserId!);
     if (!socialAccount) {
       return res.status(404).json({ error: 'Social account not found' });
     }
 
     // Create post
     const post = await postService.createPost({
-      userId: req.user!.id,
+      userId: req.effectiveUserId!,
       socialAccountId,
       content,
       contentType,
@@ -138,7 +138,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { content, contentType, mediaUrls, scheduledAt } = req.body;
     
     const post = await postService.getPostById(id);
-    if (!post || post.userId !== req.user!.id) {
+    if (!post || post.userId !== req.effectiveUserId!) {
       return res.status(404).json({ error: 'Post not found' });
     }
     
@@ -167,7 +167,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     
     const post = await postService.getPostById(id);
-    if (!post || post.userId !== req.user!.id) {
+    if (!post || post.userId !== req.effectiveUserId!) {
       return res.status(404).json({ error: 'Post not found' });
     }
     
@@ -185,7 +185,7 @@ router.post('/:id/publish-now', async (req: Request, res: Response) => {
     const { id } = req.params;
     
     const post = await postService.getPostById(id);
-    if (!post || post.userId !== req.user!.id) {
+    if (!post || post.userId !== req.effectiveUserId!) {
       return res.status(404).json({ error: 'Post not found' });
     }
     

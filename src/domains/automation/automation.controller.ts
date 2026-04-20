@@ -48,7 +48,7 @@ function serializeConfig(config: {
 
 router.get('/', async (req, res) => {
   try {
-    const config = await findAutomationConfigByUserId(req.user!.id);
+    const config = await findAutomationConfigByUserId(req.effectiveUserId!);
 
     res.json(config ? serializeConfig(config) : null);
   } catch (error) {
@@ -86,7 +86,7 @@ router.put('/', async (req, res) => {
       return res.status(400).json({ error: 'Selecione ao menos uma plataforma' });
     }
 
-    const existing = await findAutomationConfigByUserId(req.user!.id);
+    const existing = await findAutomationConfigByUserId(req.effectiveUserId!);
 
     if (!existing && !aiApiKey) {
       return res.status(400).json({ error: 'aiApiKey é obrigatória na criação inicial' });
@@ -99,7 +99,7 @@ router.put('/', async (req, res) => {
     const nextRunAt = active ? getNextRunAt(cronExpression, timezone) : null;
 
     const config = await saveAutomationConfig({
-      userId: req.user!.id,
+      userId: req.effectiveUserId!,
       active,
       cronExpression,
       timezone,
@@ -120,7 +120,7 @@ router.put('/', async (req, res) => {
 
 router.post('/test', async (req, res) => {
   try {
-    const config = await findAutomationConfigByUserId(req.user!.id);
+    const config = await findAutomationConfigByUserId(req.effectiveUserId!);
 
     if (!config) {
       return res.status(404).json({ error: 'Automation config not found' });
@@ -128,7 +128,7 @@ router.post('/test', async (req, res) => {
 
     const aiApiKey = EncryptionService.decrypt(config.aiApiKeyEncrypted);
     const preview = await contentGeneratorService.generate({
-      userId: req.user!.id,
+      userId: req.effectiveUserId!,
       prompt: config.promptTemplate,
       aiProvider: config.aiProvider,
       aiApiKey
@@ -146,14 +146,14 @@ router.post('/test', async (req, res) => {
 
 router.post('/run-now', async (req, res) => {
   try {
-    const config = await findAutomationConfigByUserId(req.user!.id);
+    const config = await findAutomationConfigByUserId(req.effectiveUserId!);
 
     if (!config) {
       return res.status(404).json({ error: 'Automation config not found' });
     }
 
     await contentGenQueue.add(
-      { userId: req.user!.id, automationConfigId: config.id },
+      { userId: req.effectiveUserId!, automationConfigId: config.id },
       { removeOnComplete: true, attempts: 3 }
     );
 

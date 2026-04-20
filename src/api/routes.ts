@@ -7,11 +7,13 @@ import { postRoutes } from '../domains/publishing/post.controller';
 import { contentRoutes } from '../domains/content/content.controller';
 import { analyticsRoutes } from '../domains/analytics/analytics.controller';
 import { metricsRoutes } from '../domains/metrics/metrics.controller';
+import { adminUserRoutes } from '../domains/admin/user.controller';
 
 const router = Router();
 
 // Mount routes
 router.use('/auth', authRoutes);
+router.use('/admin', adminUserRoutes);
 router.use('/accounts', accountRoutes);
 router.use('/posts', requireAuth, postRoutes);
 router.use('/content', requireAuth, contentRoutes);

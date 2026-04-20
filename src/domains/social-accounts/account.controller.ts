@@ -45,7 +45,7 @@ function sendOAuthResult(
 // Get all accounts for user
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const accounts = await accountService.getAccountsByUser(req.user!.id);
+    const accounts = await accountService.getAccountsByUser(req.effectiveUserId!);
     res.json(accounts);
   } catch (error) {
     console.error('Error fetching accounts:', error);
@@ -59,7 +59,7 @@ router.post('/', async (req: Request, res: Response) => {
     const { platform, accountName, accountType, accessToken, externalId } = req.body;
     
     const account = await accountService.createAccount({
-      userId: req.user!.id,
+      userId: req.effectiveUserId!,
       platform,
       accountName,
       accountType,
@@ -78,7 +78,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.get('/platform/:platform', async (req: Request, res: Response) => {
   try {
     const platform = req.params.platform as Platform;
-    const accounts = await accountService.getAccountsByPlatform(req.user!.id, platform);
+    const accounts = await accountService.getAccountsByPlatform(req.effectiveUserId!, platform);
     res.json(accounts);
   } catch (error) {
     console.error('Error fetching accounts by platform:', error);
@@ -113,7 +113,7 @@ router.get('/linkedin/callback', async (req: Request, res: Response) => {
     
     // Create account
     const account = await accountService.createAccount({
-      userId: req.user!.id,
+      userId: req.effectiveUserId!,
       platform: 'LINKEDIN',
       accountName: profile.name,
       accountType: 'PROFILE',
@@ -144,7 +144,7 @@ router.put('/manual', async (req: Request, res: Response) => {
     }
 
     const account = await accountService.createAccount({
-      userId: req.user!.id,
+      userId: req.effectiveUserId!,
       platform: normalizedPlatform,
       accountName: displayName,
       accountType: normalizedPlatform === 'LINKEDIN' ? 'PROFILE' : 'PAGE',
@@ -198,7 +198,7 @@ router.get('/facebook/callback', async (req: Request, res: Response) => {
     const page = pages[0];
     // Create account for the page
     const account = await accountService.createAccount({
-      userId: req.user!.id,
+      userId: req.effectiveUserId!,
       platform: 'FACEBOOK',
       accountName: page.name,
       accountType: 'PAGE',
@@ -218,13 +218,13 @@ router.post('/:id/default', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const platform = req.body.platform as Platform;
-    const ownedAccount = await accountService.getOwnedAccount(id, req.user!.id);
+    const ownedAccount = await accountService.getOwnedAccount(id, req.effectiveUserId!);
 
     if (!ownedAccount) {
       return res.status(404).json({ error: 'Account not found' });
     }
     
-    const account = await accountService.setDefaultAccount(req.user!.id, platform, id);
+    const account = await accountService.setDefaultAccount(req.effectiveUserId!, platform, id);
     res.json({ success: true, account });
   } catch (error) {
     console.error('Error setting default account:', error);
@@ -236,7 +236,7 @@ router.post('/:id/default', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const ownedAccount = await accountService.getOwnedAccount(id, req.user!.id);
+    const ownedAccount = await accountService.getOwnedAccount(id, req.effectiveUserId!);
 
     if (!ownedAccount) {
       return res.status(404).json({ error: 'Account not found' });

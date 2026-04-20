@@ -34,6 +34,11 @@ enum AIProvider {
   GEMINI
 }
 
+enum UserRole {
+  ADMIN
+  USER
+}
+
 model SocialAccount {
   id           String    @id @default(cuid())
   userId       String
@@ -87,16 +92,29 @@ model Post {
 }
 
 model User {
-  id           String          @id @default(cuid())
+  id           String                @id @default(cuid())
   email        Unsupported("citext") @unique
   passwordHash String
   name         String
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  role         UserRole              @default(USER)
+  isActive     Boolean               @default(true)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
 
-  socialAccounts SocialAccount[]
-  posts          Post[]
+  socialAccounts   SocialAccount[]
+  posts            Post[]
   automationConfig AutomationConfig?
+}
+
+model AdminSession {
+  id           String    @id @default(cuid())
+  adminId      String
+  targetUserId String
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+
+  @@index([adminId])
+  @@index([targetUserId])
 }
 
 model AutomationConfig {

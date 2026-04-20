@@ -8,10 +8,12 @@ import {
   LogOut,
   Settings,
   Users,
-  Zap
+  Zap,
+  ShieldCheck
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { UserSwitcher } from './UserSwitcher';
 
 const menuItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -22,15 +24,19 @@ const menuItems = [
   { to: '/configuracoes', icon: Settings, label: 'Configurações' }
 ];
 
+const adminMenuItems = [
+  { to: '/admin/users', icon: ShieldCheck, label: 'Gerenciar Usuários' }
+];
+
 const SYSTEM_VERSION = '2.1.0';
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, effectiveUser, logout } = useAuth();
   const location = useLocation();
   const [serverTime, setServerTime] = useState('');
   const [localTime, setLocalTime] = useState('');
 
-  const activeUserInitial = useMemo(() => user?.name?.charAt(0)?.toUpperCase() || 'U', [user]);
+  const activeUserInitial = useMemo(() => effectiveUser?.name?.charAt(0)?.toUpperCase() || 'U', [effectiveUser]);
 
   useEffect(() => {
     const updateTimes = () => {
@@ -67,7 +73,7 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-screen">
+    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full">
       <div className="p-6 border-b border-slate-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -98,6 +104,31 @@ export default function Sidebar() {
             </NavLink>
           );
         })}
+
+        {user?.role === 'ADMIN' && (
+          <>
+            <div className="pt-3 pb-1">
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider px-4">Admin</p>
+            </div>
+            {adminMenuItems.map(({ to, icon: Icon, label }) => {
+              const isActive = location.pathname === to || location.pathname.startsWith(to + '/');
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/25'
+                      : 'text-orange-400 hover:bg-slate-800 hover:text-orange-300'
+                  }`}
+                >
+                  <Icon size={20} />
+                  {label}
+                </NavLink>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       <div className="p-4 border-t border-slate-800 space-y-4">
@@ -112,14 +143,21 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {user && (
+        {/* Seletor de usuário (apenas admin) */}
+        {user?.role === 'ADMIN' && (
+          <div>
+            <UserSwitcher />
+          </div>
+        )}
+
+        {effectiveUser && (
           <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl">
             <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
               {activeUserInitial}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user.name}</p>
-              <p className="text-xs text-slate-400 truncate">{user.email}</p>
+              <p className="text-sm font-medium text-white truncate">{effectiveUser.name}</p>
+              <p className="text-xs text-slate-400 truncate">{effectiveUser.email}</p>
             </div>
           </div>
         )}
