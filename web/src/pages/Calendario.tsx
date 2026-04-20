@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, ChevronDown, ChevronUp, Clock3, Send } from 'lucide-react';
-import api from '../api/api';
+import api from '../services/api';
 
 type Post = {
   id: string;

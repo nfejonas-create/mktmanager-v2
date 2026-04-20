@@ -13,7 +13,7 @@ import {
   Sparkles,
   Wand2
 } from 'lucide-react';
-import api from '../api/api';
+import api from '../services/api';
 
 type TabKey = 'generate' | 'upload' | 'analyze' | 'history';
 

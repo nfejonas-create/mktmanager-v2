@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import cronstrue from 'cronstrue/i18n';
 import { Loader2, Save, Shield, Sparkles, Play } from 'lucide-react';
-import api from '../api/api';
+import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 type AIProvider = 'OPENAI' | 'ANTHROPIC' | 'GEMINI';

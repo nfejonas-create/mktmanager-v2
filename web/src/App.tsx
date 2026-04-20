@@ -16,6 +16,7 @@ import Calendario from './pages/Calendario';
 import Configuracoes from './pages/Configuracoes';
 import Contas from './pages/Contas';
 import PostDetails from './pages/PostDetails';
+import AuthCallback from './pages/AuthCallback';
 
 // Error Boundary
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null, errorInfo: ErrorInfo | null }> {
@@ -91,6 +92,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             
             <Route path="/" element={
               <PrivateRoute>
