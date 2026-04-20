@@ -221,7 +221,7 @@ export default function Conteudo() {
     formData.append('tone', uploadTone);
 
     try {
-      const response = await api.upload('/content/upload-material', formData);
+      const response = await api.upload<{ posts?: Array<{ content: string }> | { content: string }[] }>('/content/upload-material', formData);
       const generatedPosts = ensureArray<{ content: string }>(response.data?.posts ?? response.data);
       for (const item of generatedPosts) {
         if (item.content) {

@@ -2,13 +2,14 @@ import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse 
 import { clearAuthStorage, getStoredToken } from '../contexts/AuthContext';
 
 const fallbackApiUrl = 'https://postflow-backend-cspj.onrender.com/api';
+const viteApiUrl = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_API_URL;
 
 interface ApiClient extends AxiosInstance {
   upload<T = unknown>(url: string, formData: FormData, config?: AxiosRequestConfig<FormData>): Promise<AxiosResponse<T>>;
 }
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || fallbackApiUrl,
+  baseURL: viteApiUrl || fallbackApiUrl,
   timeout: 15000
 }) as ApiClient;
 
